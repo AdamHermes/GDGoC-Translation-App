@@ -93,8 +93,8 @@ In terminal in the project root folder:
    ```
    \x                            -- Enable expanded view
    \dt                           -- List all tables
-   SELECT * FROM your_table LIMIT 1;
-   SELECT id, LEFT(translation, 100) FROM your_table; -- Preview long fields
+   SELECT * FROM your_table LIMIT 5; (default your_table = job)
+   SELECT ocr_data FROM your_table WHERE id = id_number; x-- Preview long fields, id_number can be viewed from the above line
    ```
 
 ---
