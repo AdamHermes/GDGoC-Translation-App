@@ -1,0 +1,36 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.db
+*.pkl
+*.pt
+*.h5
+*.npz
+*.npy
+
+# Python envs
+.venv/
+env/
+venv/
+
+# Jupyter and notebook files
+.ipynb_checkpoints/
+
+# Git and editor config
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Node or frontend stuff (just in case)
+node_modules/
+dist/
+build/
+
+# Datasets or other large folders
+data/
+checkpoints/
+models/

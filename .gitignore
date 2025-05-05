@@ -1,0 +1,53 @@
+# Python virtual environments
+venv/
+.env
+
+# Environment variable files
+.env
+.env.*
+
+# Docker volumes and data
+postgres_data/
+minio_data/
+uploads/
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.so
+
+# Build / dist
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# VSCode
+.vscode/
+
+# PyCharm
+.idea/
+
+# Node modules (if you have frontend code with Node)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid

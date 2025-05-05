@@ -1,0 +1,12 @@
+fastapi
+paddleocr==2.10.0
+paddlepaddle==3.0.0
+transformers
+sqlmodel
+minio
+uvicorn
+psycopg2-binary
+python-multipart  
+opencv-python-headless
+dotenv
+numpy==1.26.4

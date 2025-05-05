@@ -1,0 +1,40 @@
+# Ignore Dockerfile (we use the specific Dockerfiles in backend/ and ui/)
+Dockerfile
+
+# Ignore docker-compose files if they're not needed in the image build context
+docker-compose.yml
+
+# Ignore Git-related files
+.git/
+.gitignore
+
+# Ignore environment variables (sensitive data)
+.env
+
+# Ignore editor/IDE-specific files
+.vscode/
+.idea/
+
+# Ignore any temporary or cache files
+*.log
+*.bak
+*.swp
+*.swo
+*.tmp
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore any other system files (e.g., macOS, Windows)
+.DS_Store
+Thumbs.db
+
+# Ignore volume folders (if not part of Docker image build context)
+postgres_data/
+minio_data/
+
+# Ignore build artifacts or other non-essential files
+*.tgz
+*.tar
