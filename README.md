@@ -57,28 +57,27 @@ BACKEND_URL=http://backend:8000
 Once running:
 
 - **Backend (FastAPI):** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Frontend (Streamlit):** [http://localhost:8501](http://localhost:8501)
+- **Frontend (Streamlit):** [http://localhost:8501](http://localhost:8501) (Go into this link to test the web app)
 - **MinIO console:** [http://localhost:9001](http://localhost:9001)
 
 ---
 
-## 🖼️ Viewing Uploaded Images in MinIO
+##  Viewing Uploaded Images in MinIO
 
 1. Go to [http://localhost:9001](http://localhost:9001)
 2. Login with:
-   - **Username:** minioadmin
-   - **Password:** minioadmin
+   - **Username:** minioadmin (default)
+   - **Password:** minioadmin (default)
 3. Select your bucket (e.g., ocr-images)
 4. Click on any object → press the 3-dot menu → Download
 5. Rename the downloaded file with the correct extension (e.g., .jpg, .png) if needed.
 
-> **Note:** By default, downloaded files may not include the extension. You can manually rename them.
 
 ---
 
 ## 🗃️ Viewing Stored Data in PostgreSQL
 
-### Option 1: Using psql in Docker
+In terminal in the project root folder:
 
 1. Find the PostgreSQL container name:  
    ```
