@@ -4,10 +4,14 @@ import requests
 import numpy as np
 import json
 # Title of the application
+st.set_page_config(
+    page_title = "404 Error FITUS",
+    page_icon = "https://th.bing.com/th/id/OIP.ZmhEwL5eBY8OEBrY4u5M5AHaE8?o=7&cb=iwp2rm=3&rs=1&pid=ImgDetMain"
+)
 st.title("Image Text Translator")
 
 # File uploader
-uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg", "pdf"])
 
 if uploaded_file is not None:
     # Display the uploaded image
@@ -66,3 +70,22 @@ if uploaded_file is not None:
                 st.image(image, caption="Translated Image", use_container_width=True)
             else:
                 st.error("Failed to process the image. Please try again.")
+
+st.header("Text Translator")
+
+input_text = st.text_area("Enter a text:")
+
+if st.button("Translate"):
+    if input_text.strip() != "":
+        response = requests.post("http://backend:8000/translate-text/",
+                                json = {
+                                    "text": input_text
+                                    }
+                                )
+        if response.status_code == 200:
+            translated_text = response.json()["translated_text"]
+            st.success(translated_text)
+        else:
+            st.error(f"Got error!")
+    else:
+        st.warning("You haven't entered a text yet.")

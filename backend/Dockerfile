@@ -27,7 +27,7 @@ RUN pip install --no-cache-dir \
     && pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the source code
-COPY backend/ .
+# COPY backend/ .
 
 # Expose FastAPI default port
 EXPOSE 8000

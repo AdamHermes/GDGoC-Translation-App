@@ -16,7 +16,7 @@ COPY ui/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the Streamlit app source
-COPY ui/ .
+# COPY ui/ .
 
 # Expose the port Streamlit will use
 EXPOSE 8501

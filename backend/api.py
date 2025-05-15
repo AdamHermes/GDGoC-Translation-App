@@ -6,6 +6,8 @@ from models import Job
 from sqlmodel import Session
 from minio import Minio
 from PIL import Image
+from utils import TextRequest
+
 import numpy as np
 import cv2
 import torch
@@ -106,3 +108,11 @@ async def process_image(
         raise HTTPException(500, detail=str(e))
 
     return job
+
+@app.post('/translate-text/')
+async def translate_text_api(request: TextRequest):
+    try:
+        translated_text = translate_text(request.text)
+        return {"translated_text": translated_text}
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
