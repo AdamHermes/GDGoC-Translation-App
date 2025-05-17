@@ -7,6 +7,7 @@ from sqlmodel import Session
 from minio import Minio
 from PIL import Image
 from utils import TextRequest
+from itertools import islice
 import numpy as np
 import cv2
 import torch
@@ -53,8 +54,10 @@ model     = AutoModelForSeq2SeqLM.from_pretrained("phuckhangne/nllb-200-600M-fin
 model.eval()
 logger.info(f"Translation model loaded successfully on {device}")
 
+
+
 def translate_text(text):
-    inputs = tokenizer(text, return_tensors="pt", truncation=True).to(device)
+    inputs = tokenizer(text, return_tensors="pt", truncation=False).to(device)
     out = model.generate(**inputs)
     return tokenizer.decode(out[0], skip_special_tokens=True)
 

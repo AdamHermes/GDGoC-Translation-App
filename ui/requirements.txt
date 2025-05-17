@@ -3,3 +3,4 @@ requests
 streamlit
 PyMuPDF
 python-docx
+pdf2image
