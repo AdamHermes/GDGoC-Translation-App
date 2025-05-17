@@ -6,13 +6,15 @@ USER root
 
 # Set working directory
 WORKDIR /app
+RUN pip install --upgrade pip
 
 # Install required system dependencies for OpenCV and PaddleOCR
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      libgl1-mesa-glx \
-      libglib2.0-0 \
-      libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libgomp1 \
+    curl \
+ && rm -rf /var/lib/apt/lists/*
 
 # (Optional) Preinstall paddlepaddle to reduce paddleocr install time
 # RUN pip install --no-cache-dir paddlepaddle==<desired-version>
@@ -24,7 +26,7 @@ COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir \
       torch==2.2.2+cpu \
       -f https://download.pytorch.org/whl/cpu/torch_stable.html \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
 
 # Copy the rest of the source code
 COPY backend/ .

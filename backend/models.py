@@ -12,3 +12,9 @@ class Job(SQLModel, table=True):
         default=None,
         sa_column=Column(JSON, nullable=True)
     )
+
+class Text(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ocr_data: Optional[str]
+    translation: Optional[str]
+    status: str = "pending"
