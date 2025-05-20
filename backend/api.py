@@ -44,9 +44,11 @@ app = FastAPI(on_startup=[init_db])
 
 device = torch.device("cpu")
 logger.info("Loading PaddleOCR model...")
-ocr = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=False)
+ocr_en = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=False)
+ocr = None
+ocr_ch = PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=False)
 logger.info(f"PaddleOCR loaded successfully on {device}")
-
+langcode = "en"  # Default language code
 # Translation model (VN finetuned)
 logger.info("Loading translation model and tokenizer...")
 tokenizer = AutoTokenizer.from_pretrained("phuckhangne/nllb-200-600M-finetuned-VN")
@@ -54,6 +56,19 @@ model     = AutoModelForSeq2SeqLM.from_pretrained("phuckhangne/nllb-200-600M-fin
 model.eval()
 logger.info(f"Translation model loaded successfully on {device}")
 
+def get_ocr_model(lang:str):
+    if lang == "ch":
+        return ocr_ch
+    elif lang == "fr":
+        return PaddleOCR(use_angle_cls=True, lang="fr", use_gpu=False)
+    elif lang == "german":
+        return PaddleOCR(use_angle_cls=True, lang="german", use_gpu=False)
+    elif lang == "japan":
+        return PaddleOCR(use_angle_cls=True, lang="japan", use_gpu=False)
+    elif lang == "korean":
+        return PaddleOCR(use_angle_cls=True, lang="korean", use_gpu=False)
+    else:
+        return ocr_en
 
 
 def translate_text(text):
@@ -70,7 +85,15 @@ def translate_image(text: list[str]) -> list[str]:
     return [tokenizer.decode(t, skip_special_tokens=True) for t in outputs]
 
 
-
+@app.post("/set-lang/")
+async def set_lang(ocr_lang_code: str, nllb_lang_code: str = None, session: Session = Depends(get_session)):
+    global langcode
+    try:
+        langcode = ocr_lang_code # Validate language codes
+        return {"message": "Language codes set successfully"}
+    except Exception as e:
+        logging.error(f"Error setting language: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to set language codes")
 
 @app.post("/process-image/", response_model=Job)
 async def process_image(
@@ -82,6 +105,8 @@ async def process_image(
         img_id = str(uuid.uuid4())
         obj = f"{img_id}.jpg"
         ctype = file.content_type or 'image/jpeg'
+        print("The loaded langcode is: ",langcode)
+        ocr = get_ocr_model(langcode)    
         # upload raw
         try:
             minio_client.put_object(BUCKET, obj, io.BytesIO(data), len(data), content_type=ctype)

@@ -68,3 +68,5 @@
           condition: service_started
       environment:
         BACKEND_URL: ${BACKEND_URL}
+      volumes:
+        - ./model:/model

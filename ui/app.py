@@ -1,15 +1,27 @@
 import streamlit as st
+
 from PIL import Image, ImageDraw, ImageFont
+
 import requests
 import numpy as np
 import json
+import pandas as pd
 import io
 from pdf2image import convert_from_bytes
 from docx import Document
+import os
+
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-# Title of the application
+
+#-----------------------------------------------------------------------------
+#                           CONFIG OF APP
+#-----------------------------------------------------------------------------
 st.title("Image Text Translator")
+
+# Lang Dir
+LANG_PATH = os.path.join("/model/langs.csv")
+LANG_DATAFRAME = pd.read_csv(LANG_PATH, sep = ',')
 
 # File uploader
 uploaded_file = st.file_uploader("Upload an image, PDF, or DOCX", type=["png", "jpg", "jpeg", "pdf", "docx"])
@@ -25,6 +37,50 @@ adapter = HTTPAdapter(max_retries = retry)
 session.mount("http://", adapter)
 session.mount("https://",adapter)
 
+#-----------------------------------------------------------------------------
+#                           THE SIDEBAR
+#-----------------------------------------------------------------------------
+# with st.sidebar:
+#     st.header("Custom settings for your model")
+
+#     # Premium button
+#     if st.button("Upgrade to Pro"):
+#         pass
+
+#-----------------------------------------------------------------------------
+#                           SELECT LANGUAGE
+#-----------------------------------------------------------------------------
+st.subheader("Select your language")
+lang_list = LANG_DATAFRAME["Lang"].dropna().tolist()
+lang_display = st.selectbox("Choose your language", ["-- Select --"] + lang_list)
+
+ocr_lang_code = None
+nllb_lang_code = None
+
+if lang_display != "-- Select --":
+    row = LANG_DATAFRAME[LANG_DATAFRAME["Lang"] == lang_display].iloc[0]
+    ocr_lang_code = row["PaddleOCR"]
+    nllb_lang_code = row["NLLB200"]
+
+    st.write(f"Debug - Selected language: {lang_display}")
+    st.write(f"Debug - OCR code: {ocr_lang_code}, NLLB code: {nllb_lang_code}")
+
+    # Post response to Backend
+    try:
+        lang_response = session.post(
+            "http://backend:8000/set-lang/",
+            params={"ocr_lang_code": ocr_lang_code,
+                "nllb_lang_code": nllb_lang_code}
+        )
+        if lang_response.status_code == 200:
+            st.success(lang_response.json())
+        else:
+            st.error(f"Got an error. Status code: {lang_response.status_code}")
+            st.error(f"Response: {lang_response.text}")
+    except Exception as e:
+        st.error(f"Error making request: {str(e)}")
+# Helper: process and translate image
+
 def process_and_translate_image(image, image_bytes):
     with st.spinner("Processing image..."):
         response = session.post(
@@ -33,91 +89,99 @@ def process_and_translate_image(image, image_bytes):
         )
         if response.status_code == 200:
             job = response.json()
-            boxes = job["box"]
-            ocr_list = json.loads(job["ocr_data"])
-            translation_list = json.loads(job["translation"])
+            boxes = job.get("box", [])
+            ocr_list = json.loads(job.get("ocr_data", "[]"))
+            translation_list = json.loads(job.get("translation", "[]"))
 
             draw = ImageDraw.Draw(image)
             font_path = "DejaVuSans.ttf"
+
+            # compute average box height for font scaling
             heights = []
-            for polygon in boxes:
-                box = np.array(polygon).astype(int)
-                y0 = box[:, 1].min() if box.ndim > 1 else box[1]
-                y1 = box[:, 1].max() if box.ndim > 1 else box[3]
+            for poly in boxes:
+                box = np.array(poly).astype(int)
+                y0, y1 = box[:,1].min(), box[:,1].max()
                 heights.append(y1 - y0)
-            avg_height = max(int(np.mean(heights)), 1)
-            base_font_size = max(int(avg_height * 0.8), 1)
+            avg_h = max(int(np.mean(heights)) if heights else 10, 1)
+            base_size = max(int(avg_h * 0.8), 12)
 
-            for polygon, txt, trans in zip(boxes, ocr_list, translation_list):
-                box = np.array(polygon).astype(int)
-                x0 = box[:, 0].min() if box.ndim > 1 else box[0]
-                y0 = box[:, 1].min() if box.ndim > 1 else box[1]
-                x1 = box[:, 0].max() if box.ndim > 1 else box[2]
-                y1 = box[:, 1].max() if box.ndim > 1 else box[3]
-
+            # draw translation
+            for poly, orig, trans in zip(boxes, ocr_list, translation_list):
+                box = np.array(poly).astype(int)
+                x0, y0 = box[:,0].min(), box[:,1].min()
+                x1, y1 = box[:,0].max(), box[:,1].max()
+                # white background
                 draw.rectangle([x0, y0, x1, y1], fill="white")
-                font = ImageFont.truetype(font_path, size=base_font_size)
-                w = draw.textbbox((x0, y0), trans, font=font)[2] - x0
-                while w > (x1 - x0) and base_font_size > 12:
-                    base_font_size -= 1
-                    font = ImageFont.truetype(font_path, size=base_font_size)
-                    w = draw.textbbox((x0, y0), trans, font=font)[2] - x0
+                size = base_size
+                font = ImageFont.truetype(font_path, size=size)
+                # shrink to fit
+                w = draw.textbbox((x0,y0), trans, font=font)[2] - x0
+                while w > (x1 - x0) and size > 10:
+                    size -= 1
+                    font = ImageFont.truetype(font_path, size=size)
+                    w = draw.textbbox((x0,y0), trans, font=font)[2] - x0
                 draw.text((x0, y0), trans, fill="black", font=font)
 
+            # display and upload
             st.image(image, caption="Translated Image", use_container_width=True)
-            img_byte_arr = io.BytesIO()
-            image.save(img_byte_arr, format="JPEG")
-            img_byte_arr.seek(0)
-
-            upload_response = session.post(
+            buf = io.BytesIO()
+            image.save(buf, format="JPEG")
+            buf.seek(0)
+            up = session.post(
                 "http://backend:8000/upload-translated-image/",
-                files={"file": ("translated.jpg", img_byte_arr, "image/jpeg")},
+                files={"file": ("translated.jpg", buf, "image/jpeg")}
             )
-            if upload_response.status_code == 200:
-                object_name = upload_response.json()["object_name"]
-                st.success(f"Translated image saved to MinIO as: {object_name}")
+            if up.status_code == 200:
+                st.success(f"Translated image saved as: {up.json().get('object_name')}")
             else:
-                st.error("Failed to save translated image to MinIO.")
+                st.error("Failed to save translated image.")
         else:
-            st.error("Failed to process the image.")
+            st.error("Image processing failed.")
+
+
 def translate_text(text):
     with st.spinner("Translating text..."):
-        response = session.post("http://backend:8000/translate-text/", json={"text": text})
-        if response.status_code == 200:
-            st.success(response.json()["translated_text"])
+        resp = session.post(
+            "http://backend:8000/translate-text/", json={"text": text}
+        )
+        if resp.status_code == 200 and resp.json().get("translated_text"):
+            st.success(resp.json()["translated_text"])
         else:
-            st.error("Text translation failed.")
+            st.error("Translation failed.")
 
-if uploaded_file is not None:
-    file_type = uploaded_file.type
-    if st.button("Translate File"):
-        if file_type.startswith("image"):
-            image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_container_width=True)
-            process_and_translate_image(image, uploaded_file.getvalue())
-        
-        elif file_type == "application/pdf":
+
+# File upload
+
+if uploaded_file:
+    ftype = uploaded_file.type
+    # IMAGE
+    if ftype.startswith("image"):
+        img = Image.open(uploaded_file)
+        st.image(img, caption="Uploaded Image", use_container_width=True)
+        if st.button("Translate Image", key="translate_img"):
+            process_and_translate_image(img, uploaded_file.getvalue())
+
+    # PDF
+    elif ftype == "application/pdf":
+        if st.button("Translate PDF", key="translate_pdf"):
             pages = convert_from_bytes(uploaded_file.read())
-            for i, page_image in enumerate(pages):
-                st.image(page_image, caption=f"Page {i+1}", use_container_width=True)
-                img_bytes = io.BytesIO()
-                page_image.save(img_bytes, format='JPEG')
-                process_and_translate_image(page_image, img_bytes.getvalue())
+            for i, pg in enumerate(pages):
+                st.image(pg, caption=f"Page {i+1}", use_container_width=True)
+                buf = io.BytesIO()
+                pg.save(buf, format='JPEG')
+                process_and_translate_image(pg, buf.getvalue())
 
-        elif file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            if "docx_text" not in st.session_state:
-                doc = Document(uploaded_file)
-                st.session_state.docx_text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
-            
-            st.text_area("Extracted Text from DOCX", value=st.session_state.docx_text, height=200)
+    # DOCX
+    elif ftype == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        # extract text immediately
+        doc = Document(uploaded_file)
+        text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+        st.text_area("Extracted Text from DOCX", value=text, height=200)
+        if st.button("Translate DOCX Text", key="translate_docx"):
+            translate_text(text)
 
-            if st.button("Translate DOCX Text"):
-                translate_text(st.session_state.docx_text)
-
-
+# Separate text input translator
 st.header("Text Translator")
-
-input_text = st.text_area("Enter a text:")
-
-if st.button("Translate Text"):
+input_text = st.text_area("Enter text to translate:")
+if st.button("Translate Text", key="translate_txt"):
     translate_text(input_text)
