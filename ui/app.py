@@ -66,26 +66,37 @@ if lang_display != "-- Select --":
     st.write(f"Debug - OCR code: {ocr_lang_code}, NLLB code: {nllb_lang_code}")
 
     # Post response to Backend
-    try:
-        lang_response = session.post(
-            "http://backend:8000/set-lang/",
-            params={"ocr_lang_code": ocr_lang_code,
-                "nllb_lang_code": nllb_lang_code}
-        )
-        if lang_response.status_code == 200:
-            st.success(lang_response.json())
-        else:
-            st.error(f"Got an error. Status code: {lang_response.status_code}")
-            st.error(f"Response: {lang_response.text}")
-    except Exception as e:
-        st.error(f"Error making request: {str(e)}")
+    # try:
+    #     lang_response = session.post(
+    #         "http://backend:8000/set-lang/",
+    #         params={"ocr_lang_code": ocr_lang_code,
+    #             "nllb_lang_code": nllb_lang_code}
+    #     )
+    #     if lang_response.status_code == 200:
+    #         st.success(lang_response.json())
+    #     else:
+    #         st.error(f"Got an error. Status code: {lang_response.status_code}")
+    #         st.error(f"Response: {lang_response.text}")
+    # except Exception as e:
+    #     st.error(f"Error making request: {str(e)}")
 # Helper: process and translate image
 
-def process_and_translate_image(image, image_bytes):
+def process_and_translate_image(image, image_bytes, ocr_code, nllb_code):
+    if not ocr_code or not nllb_code:
+        st.error("Please select a language from the dropbox.")
+        return None
+    
+    params_process = {
+        "ocr_request_lang_code": ocr_code,
+        "nllb_request_src_lang": nllb_code
+    }
+    
     with st.spinner("Processing image..."):
         response = session.post(
             "http://backend:8000/process-image/",
-            files={"file": image_bytes}
+            files={"file": image_bytes},
+            params=params_process,
+            timeout = 180
         )
         if response.status_code == 200:
             job = response.json()
@@ -138,20 +149,24 @@ def process_and_translate_image(image, image_bytes):
         else:
             st.error("Image processing failed.")
 
-
-def translate_text(text):
+def translate_text(text, nllb_code: str):
+    if not nllb_code:
+        st.error("Please select a language from the dropdown first.") 
+        return
+    if not text or not text.strip():
+        st.warning("No text to translate.") 
+        return
+    
     with st.spinner("Translating text..."):
         resp = session.post(
-            "http://backend:8000/translate-text/", json={"text": text}
-        )
+            "http://backend:8000/translate-text/", json={"text": text,
+                                                        "source_nllb_code": nllb_code})
         if resp.status_code == 200 and resp.json().get("translated_text"):
             st.success(resp.json()["translated_text"])
         else:
             st.error("Translation failed.")
 
-
 # File upload
-
 if uploaded_file:
     ftype = uploaded_file.type
     # IMAGE
@@ -184,4 +199,4 @@ if uploaded_file:
 st.header("Text Translator")
 input_text = st.text_area("Enter text to translate:")
 if st.button("Translate Text", key="translate_txt"):
-    translate_text(input_text)
+    translate_text(input_text, nllb_lang_code)

@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     libgomp1 \
     curl \
- && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # (Optional) Preinstall paddlepaddle to reduce paddleocr install time
 # RUN pip install --no-cache-dir paddlepaddle==<desired-version>
@@ -24,8 +24,8 @@ COPY backend/requirements.txt ./requirements.txt
 
 # Install Python dependencies (fastapi, paddleocr, etc.)
 RUN pip install --no-cache-dir \
-      torch==2.2.2+cpu \
-      -f https://download.pytorch.org/whl/cpu/torch_stable.html \
+    torch==2.2.2 \
+    -f https://download.pytorch.org/whl/cpu/torch_stable.html \
     && pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
 
 # Copy the rest of the source code

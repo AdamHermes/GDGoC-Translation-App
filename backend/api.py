@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, Depends, HTTPException
+from fastapi import FastAPI, UploadFile, Depends, HTTPException, Query
 from paddleocr import PaddleOCR
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from db import init_db, get_session
@@ -42,62 +42,91 @@ if not minio_client.bucket_exists(BUCKET):
 # FastAPI app
 app = FastAPI(on_startup=[init_db])
 
-device = torch.device("cpu")
+device_str = "cpu"
+if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    device_str = "mps"
+if torch.cuda.is_available():
+    device_str = "cuda"
+device = torch.device(device_str)
+
+loaded_models = {}
+
 logger.info("Loading PaddleOCR model...")
-ocr_en = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=False)
+use_gpu = True if device == "cuda" else False
+ocr_en = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=use_gpu)
 ocr = None
-ocr_ch = PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=False)
+ocr_ch = PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=use_gpu)
 logger.info(f"PaddleOCR loaded successfully on {device}")
 langcode = "en"  # Default language code
+
+loaded_models["en"] = ocr_en
+loaded_models["ch"] = ocr_ch
+
 # Translation model (VN finetuned)
+nllb_lang = "eng_Latn"
 logger.info("Loading translation model and tokenizer...")
+
 tokenizer = AutoTokenizer.from_pretrained("phuckhangne/nllb-200-600M-finetuned-VN")
+tokenizer.tgt_lang = "vie_Latn"
+
 model     = AutoModelForSeq2SeqLM.from_pretrained("phuckhangne/nllb-200-600M-finetuned-VN").to(device)
 model.eval()
+
 logger.info(f"Translation model loaded successfully on {device}")
 
-def get_ocr_model(lang:str):
-    if lang == "ch":
-        return ocr_ch
-    elif lang == "fr":
-        return PaddleOCR(use_angle_cls=True, lang="fr", use_gpu=False)
-    elif lang == "german":
-        return PaddleOCR(use_angle_cls=True, lang="german", use_gpu=False)
-    elif lang == "japan":
-        return PaddleOCR(use_angle_cls=True, lang="japan", use_gpu=False)
-    elif lang == "korean":
-        return PaddleOCR(use_angle_cls=True, lang="korean", use_gpu=False)
-    else:
-        return ocr_en
+def get_ocr_model(lang_code: str):
+    if lang_code not in loaded_models:
+        supported_langs_on_demand = ["fr", "german", "japan", "korean", "es", "it", "ru", "ar"]
+        if lang_code in supported_langs_on_demand:
+            logger.info(f"Cache miss. Loading PaddleOCR model for language: {lang_code}...")
+            try:
+                loaded_models[lang_code] = PaddleOCR(use_angle_cls=True, lang=lang_code, use_gpu=use_gpu, show_log=False)
+                logger.info(f"PaddleOCR model for {lang_code} loaded and cached.")
+            except Exception as e:
+                logger.error(f"Failed to load OCR model for {lang_code}: {e}. Defaulting to English model.")
+                return loaded_models["en"] 
+        else:
+            logger.warning(f"OCR language '{lang_code}' not pre-loaded or in on-demand list. Defaulting to English model.")
+            return loaded_models["en"] 
+    return loaded_models[lang_code]
 
 
-def translate_text(text):
-    inputs = tokenizer(text, return_tensors="pt", truncation=False).to(device)
+def translate_text(text, nllb_lang: str = "eng_Latn") -> str:
+    tokenizer.src_lang = nllb_lang
+
+    inputs = tokenizer(text, return_tensors="pt", truncation=True).to(device)
     out = model.generate(**inputs)
+
     return tokenizer.decode(out[0], skip_special_tokens=True)
 
-def translate_image(text: list[str]) -> list[str]:
+def translate_image(text: list[str], nllb_lang: str = "eng_Latn") -> list[str]:
     text = [t for t in text if isinstance(t, str) and t.strip()]
     if not text:
         raise ValueError("No valid text found to translate.")
+    
+    tokenizer.src_lang = nllb_lang
+
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True).to(device)
     outputs = model.generate(**inputs)
+
     return [tokenizer.decode(t, skip_special_tokens=True) for t in outputs]
 
-
-@app.post("/set-lang/")
-async def set_lang(ocr_lang_code: str, nllb_lang_code: str = None, session: Session = Depends(get_session)):
-    global langcode
-    try:
-        langcode = ocr_lang_code # Validate language codes
-        return {"message": "Language codes set successfully"}
-    except Exception as e:
-        logging.error(f"Error setting language: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to set language codes")
+# @app.post("/set-lang/")
+# async def set_lang(ocr_lang_code: str, nllb_lang_code: str, session: Session = Depends(get_session)):
+#     global langcode, nllb_lang
+#     try:
+#         langcode = ocr_lang_code # Validate language codes
+#         nllb_lang = nllb_lang_code
+#         return {"message": "Language codes set successfully"}
+#     except Exception as e:
+#         logging.error(f"Error setting language: {str(e)}")
+#         raise HTTPException(status_code=500, detail="Failed to set language codes")
 
 @app.post("/process-image/", response_model=Job)
 async def process_image(
     file: UploadFile,
+    ocr_request_lang_code: str = Query(default="en", description="OCR language code (e.g., en, ch, fr)"),
+    nllb_request_src_lang: str = Query(default="eng_Latn", description="NLLB source language code (e.g., eng_Latn, fra_Latn)"),
     session: Session = Depends(get_session)
 ):
     try:
@@ -105,8 +134,8 @@ async def process_image(
         img_id = str(uuid.uuid4())
         obj = f"{img_id}.jpg"
         ctype = file.content_type or 'image/jpeg'
-        print("The loaded langcode is: ",langcode)
-        ocr = get_ocr_model(langcode)    
+        print("The loaded langcode is: ", ocr_request_lang_code)
+        ocr = get_ocr_model(ocr_request_lang_code)    
         # upload raw
         try:
             minio_client.put_object(BUCKET, obj, io.BytesIO(data), len(data), content_type=ctype)
@@ -125,13 +154,14 @@ async def process_image(
             image = Image.open(io.BytesIO(data))
             img_bgr = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
-            ocr_results = ocr.ocr(img_bgr, cls=True)[0]
-            if not ocr_results:
+            ocr_results = ocr.ocr(img_bgr, cls=True)
+            if not ocr_results or not ocr_results[0]:
                 raise HTTPException(400, detail="OCR did not detect any text")
+            ocr_results = ocr_results[0]
 
             translated_results = []
             boxes, originals = zip(*[(box, txt) for box, (txt, _) in ocr_results])
-            translations = translate_image(list(originals))
+            translations = translate_image(list(originals), nllb_request_src_lang)
 
             for box, orig, trans in zip(boxes, originals, translations):
                 translated_results.append({
@@ -174,15 +204,25 @@ async def upload_translated_image(file: UploadFile):
         raise HTTPException(500, "Storage upload failed")
     return {"object_name": obj}
 
-
 @app.post('/translate-text/')
-async def translate_text_api(request: TextRequest, session: Session = Depends(get_session)):
+async def translate_text_endpoint(request: TextRequest, session: Session = Depends(get_session)):
+    if not hasattr(request, 'source_nllb_code') or not request.source_nllb_code:
+        logger.error("Request to /translate-text/ missing 'source_nllb_code'.")
+        raise HTTPException(status_code=400, detail="Missing 'source_nllb_code' in request body. Please provide the NLLB source language code.")
+    
+    if not request.text or not request.text.strip():
+        logger.warning("Request to /translate-text/ received empty text.")
+
+        return {"translated_text": ""}
     try:
-        translated_text = translate_text(request.text)
-        text = Text(ocr_data=request.text, translation=translated_text)
-        session.add(text)
+        logger.info(f"Translating text from NLLB source: {request.source_nllb_code}")
+        translated_content = translate_text(request.text, request.source_nllb_code)
+        
+        db_text_entry = Text(ocr_data=request.text, translation=translated_content)
+        session.add(db_text_entry)
         session.commit()
-        session.refresh(text)
-        return {"translated_text": translated_text}
+        session.refresh(db_text_entry)
+        return {"translated_text": translated_content}
     except Exception as e:
-        raise HTTPException(500, detail=str(e))
+        logger.error(f"Error in /translate-text/ endpoint: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Text translation failed: {str(e)}")
