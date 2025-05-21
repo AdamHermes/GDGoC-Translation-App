@@ -1,5 +1,5 @@
 Lang,PaddleOCR,NLLB200
-Chinese,ch,eng_Latn
+Chinese,ch,zho_Hans
 English,en,
 French,fr,fra_Latn
 German,german,deu_Latn
