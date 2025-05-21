@@ -53,9 +53,9 @@ loaded_models = {}
 
 logger.info("Loading PaddleOCR model...")
 use_gpu = True if device == "cuda" else False
-ocr_en = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=use_gpu)
+ocr_en = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=use_gpu, show_log = False)
 ocr = None
-ocr_ch = PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=use_gpu)
+ocr_ch = PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=use_gpu, show_log = False)
 logger.info(f"PaddleOCR loaded successfully on {device}")
 langcode = "en"  # Default language code
 
@@ -90,26 +90,27 @@ def get_ocr_model(lang_code: str):
             return loaded_models["en"] 
     return loaded_models[lang_code]
 
+def _batch_translate_core(texts: list[str], nllb_src_lang: str) -> list[str]:
+    if not texts:
+        return []
 
-def translate_text(text, nllb_lang: str = "eng_Latn") -> str:
-    tokenizer.src_lang = nllb_lang
+    valid_texts = [t for t in texts if isinstance(t, str) and t.strip()]
+    if not valid_texts:
+        return []
 
-    inputs = tokenizer(text, return_tensors="pt", truncation=True).to(device)
-    out = model.generate(**inputs)
+    tokenizer.src_lang = nllb_src_lang
+    inputs = tokenizer(valid_texts, return_tensors="pt", padding=True, truncation=True).to(device)
 
-    return tokenizer.decode(out[0], skip_special_tokens=True)
-
-def translate_image(text: list[str], nllb_lang: str = "eng_Latn") -> list[str]:
-    text = [t for t in text if isinstance(t, str) and t.strip()]
-    if not text:
-        raise ValueError("No valid text found to translate.")
-    
-    tokenizer.src_lang = nllb_lang
-
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True).to(device)
     outputs = model.generate(**inputs)
 
     return [tokenizer.decode(t, skip_special_tokens=True) for t in outputs]
+
+def translate_text(text, nllb_lang: str = "eng_Latn") -> str:
+    translated_texts = _batch_translate_core([text], nllb_lang)
+    return translated_texts[0] if translated_texts else ""
+
+def translate_image(text: list[str], nllb_lang: str = "eng_Latn") -> list[str]:
+    return _batch_translate_core(text, nllb_lang)
 
 # @app.post("/set-lang/")
 # async def set_lang(ocr_lang_code: str, nllb_lang_code: str, session: Session = Depends(get_session)):
