@@ -62,8 +62,8 @@ if lang_display != "-- Select --":
     ocr_lang_code = row["PaddleOCR"]
     nllb_lang_code = row["NLLB200"]
 
-    st.write(f"Debug - Selected language: {lang_display}")
-    st.write(f"Debug - OCR code: {ocr_lang_code}, NLLB code: {nllb_lang_code}")
+    # st.write(f"Debug - Selected language: {lang_display}")
+    # st.write(f"Debug - OCR code: {ocr_lang_code}, NLLB code: {nllb_lang_code}")
 
     # Post response to Backend
     try:
@@ -72,20 +72,25 @@ if lang_display != "-- Select --":
             params={"ocr_lang_code": ocr_lang_code,
                 "nllb_lang_code": nllb_lang_code}
         )
-        if lang_response.status_code == 200:
-            st.success(lang_response.json())
-        else:
-            st.error(f"Got an error. Status code: {lang_response.status_code}")
-            st.error(f"Response: {lang_response.text}")
+        # if lang_response.status_code == 200:
+        #     st.success(lang_response.json())
+        # else:
+        #     st.error(f"Got an error. Status code: {lang_response.status_code}")
+        #     st.error(f"Response: {lang_response.text}")
     except Exception as e:
         st.error(f"Error making request: {str(e)}")
 # Helper: process and translate image
 
 def process_and_translate_image(image, image_bytes):
+
+    
+
+    
     with st.spinner("Processing image..."):
         response = session.post(
             "http://backend:8000/process-image/",
-            files={"file": image_bytes}
+            files={"file": image_bytes},
+            timeout = 180
         )
         if response.status_code == 200:
             job = response.json()
@@ -138,7 +143,6 @@ def process_and_translate_image(image, image_bytes):
         else:
             st.error("Image processing failed.")
 
-
 def translate_text(text):
     with st.spinner("Translating text..."):
         resp = session.post(
@@ -149,9 +153,7 @@ def translate_text(text):
         else:
             st.error("Translation failed.")
 
-
 # File upload
-
 if uploaded_file:
     ftype = uploaded_file.type
     # IMAGE

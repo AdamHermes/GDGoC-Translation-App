@@ -24,10 +24,9 @@ COPY backend/requirements.txt ./requirements.txt
 
 # Install Python dependencies (fastapi, paddleocr, etc.)
 RUN pip install --no-cache-dir \
-      torch==2.2.2+cpu \
+      torch==2.3.0 \
       -f https://download.pytorch.org/whl/cpu/torch_stable.html \
     && pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
-
 # Copy the rest of the source code
 COPY backend/ .
 

@@ -3,10 +3,12 @@
   services:
     postgres:
       image: postgres:15
+      env_file:
+        - .env
       environment:
-        POSTGRES_USER: appuser
-        POSTGRES_PASSWORD: secret
-        POSTGRES_DB: ocrtranslate
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_DB: ${POSTGRES_DB}
       volumes:
         - ./postgres_data:/var/lib/postgresql/data
       ports:
@@ -23,9 +25,11 @@
       ports:
         - "9000:9000"
         - "9001:9001"
+      env_file:
+        - .env
       environment:
-        MINIO_ROOT_USER: minioadmin
-        MINIO_ROOT_PASSWORD: minioadmin
+        MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+        MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
       command: server /data --console-address ":9001"
       volumes:
         - ./minio_data:/data
@@ -42,7 +46,7 @@
         minio:
           condition: service_started
       volumes:
-        - ./uploads:/app/uploads
+        - ./inference_model:/inference_model
       env_file:
         - .env
       environment:
