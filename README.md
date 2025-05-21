@@ -31,10 +31,13 @@ Here’s an example `.env`:
 
 ```
 DATABASE_URL=postgresql://appuser:secret@postgres:5432/ocrtranslate
-MINIO_ENDPOINT=http://minio:9000
+MINIO_ENDPOINT=http://9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
-BACKEND_URL=http://backend:8000
+BACKEND_URL=http://8000
+POSTGRES_USER=appuser
+POSTGRES_PASSWORD=secret
+POSTGRES_DB=ocrtranslate
 ```
 
 ---
