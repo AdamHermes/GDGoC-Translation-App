@@ -69,8 +69,7 @@ Once running:
    - **Username:** minioadmin (default)
    - **Password:** minioadmin (default)
 3. Select your bucket (e.g., ocr-images)
-4. Click on any object → press the 3-dot menu → Download
-5. Rename the downloaded file with the correct extension (e.g., .jpg, .png) if needed.
+4. Click on Last Modified Sort to get the new translated image; click download to view it.
 
 
 ---
@@ -88,13 +87,22 @@ In terminal in the project root folder:
    ```
    docker exec -it <postgres_container_name> psql -U appuser -d ocrtranslate
    ```
-
-3. Once inside, you can run SQL commands:  
+   By default the PostgreSQL container name is:
+   ```
+   docker exec -it gdgoc-translation-app-postgres-1 psql -U appuser -d ocrtranslate
+   ```
+4. Once inside, you can run SQL commands:  
    ```
    \x                            -- Enable expanded view
    \dt                           -- List all tables
-   SELECT * FROM your_table LIMIT 5; (default your_table = job)
-   SELECT ocr_data FROM your_table WHERE id = id_number; -- Preview long fields, id_number can be viewed from the above line
+   ```
+   To see your new ocr_data and translation use:
+   ```
+   SELECT ocr_data FROM job ORDER BY id DESC LIMIT 1;  (Use table = job to view ocr_data/translation from Translating Images)
+   SELECT translation FROM job ORDER BY id DESC LIMIT 1;  (Use table = job to view ocr_data/translation from Translating Images)
+   
+   SELECT ocr_data FROM text ORDER BY id DESC LIMIT 1;  (Use table = text to view ocr_data/translation from Translating Text)
+   SELECT translation FROM text ORDER BY id DESC LIMIT 1;  (Use table = job to view ocr_data/translation from Translating Text)
    ```
 
 ---
