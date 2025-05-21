@@ -102,7 +102,7 @@ In terminal in the project root folder:
    SELECT translation FROM job ORDER BY id DESC LIMIT 1;  (Use table = job to view ocr_data/translation from Translating Images)
    
    SELECT ocr_data FROM text ORDER BY id DESC LIMIT 1;  (Use table = text to view ocr_data/translation from Translating Text)
-   SELECT translation FROM text ORDER BY id DESC LIMIT 1;  (Use table = job to view ocr_data/translation from Translating Text)
+   SELECT translation FROM text ORDER BY id DESC LIMIT 1;  (Use table = text to view ocr_data/translation from Translating Text)
    ```
 
 ---
