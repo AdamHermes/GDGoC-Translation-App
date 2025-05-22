@@ -1,7 +1,7 @@
 fastapi
 paddleocr==2.10.0
 paddlepaddle==3.0.0
-transformers
+transformers==4.51.3
 sqlmodel
 minio
 uvicorn
@@ -10,4 +10,3 @@ python-multipart
 opencv-python-headless
 dotenv
 numpy==1.26.4
-nltk
