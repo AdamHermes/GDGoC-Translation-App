@@ -55,7 +55,7 @@ logger.info("Loading PaddleOCR model...")
 use_gpu = True if device == "cuda" else False
 inference_model_path = "/inference_model"
 
-if os.path.exists(inference_model_path):
+if os.path.isdir(inference_model_path) and os.listdir(inference_model_path):
     print("Loading model locally")
     ocr_en = PaddleOCR(
         det_model_dir=inference_model_path,
@@ -65,6 +65,7 @@ if os.path.exists(inference_model_path):
         show_log=False
     )
 else:
+    print("Downloading model or using default")
     ocr_en = PaddleOCR(
         use_angle_cls=True,
         lang="en",
