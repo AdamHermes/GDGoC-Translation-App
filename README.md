@@ -25,7 +25,7 @@ This project uses Docker to run a full OCR translation pipeline, including:
 
 ## ⚙️ .env File Setup
 
-You **must create a `.env` file** in the root of the project before running Docker.
+You **must create a `.env` file** in the root of the project before running Docker Compose.
 
 Here’s an example `.env`:
 
