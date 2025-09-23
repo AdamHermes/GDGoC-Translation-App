@@ -1,4 +1,4 @@
-## 📖 Project Overview
+##📖 Project Overview
 
 This project presents an **OCR-based translation pipeline** that combines state-of-the-art OCR and multilingual translation models into a single application.
 
@@ -11,10 +11,10 @@ This project presents an **OCR-based translation pipeline** that combines state-
 This lightweight yet powerful pipeline demonstrates how vision-language models and modern web frameworks can be combined into a practical translation tool.
 
 👉 For full details of the models, training process, and evaluation, see the  
-[📑 Full Report (PDF)](./OCR_Layout_Translation.pdf)  
+[📑 Full Report (PDF)](./GDGoC_AI_Challenges_OCR_Layout_Translation.pdf)  
 
 
-# OCR Translation App
+## Tech Stacks
 
 This project uses Docker to run a full OCR translation pipeline, including:
 
