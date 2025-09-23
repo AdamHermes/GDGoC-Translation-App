@@ -1,4 +1,4 @@
-##📖 Project Overview
+## 📖 Project Overview
 
 This project presents an **OCR-based translation pipeline** that combines state-of-the-art OCR and multilingual translation models into a single application.
 
