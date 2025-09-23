@@ -1,3 +1,19 @@
+## 📖 Project Overview
+
+This project presents an **OCR-based translation pipeline** that combines state-of-the-art OCR and multilingual translation models into a single application.
+
+- **OCR (Optical Character Recognition):** Uses **PaddleOCR** for text detection and recognition in multilingual images.  
+- **Translation:** Extracted text is translated using a fine-tuned **NLLB-200 (600M)** model from Meta, known for its strong cross-lingual performance.  
+- **Backend & Storage:** A **FastAPI** backend manages requests, translations, and storage, with **PostgreSQL** for structured data and **MinIO** for image storage.  
+- **Frontend:** A **Streamlit** interface allows users to upload documents/images, view OCR results, and receive translated images.  
+- **Deployment:** The entire system is containerized with Docker for easy setup and reproducibility.  
+
+This lightweight yet powerful pipeline demonstrates how vision-language models and modern web frameworks can be combined into a practical translation tool.
+
+👉 For full details of the models, training process, and evaluation, see the  
+[📑 Full Report (PDF)](./OCR_Layout_Translation.pdf)  
+
+
 # OCR Translation App
 
 This project uses Docker to run a full OCR translation pipeline, including:
